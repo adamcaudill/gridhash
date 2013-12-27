@@ -40,6 +40,14 @@ Here, `extra_data` is a block of data deterministically generated from a seeded 
 
 The idea here is to require as much data in memory as possible, and as much CPU time as possible, to make life harder for those attempting to crack these hashes.
 
+#### Configuration
+There are several ways that this can be tuned for a specific environment:
+
+* Grid Size - This has the largest performance impact, it sets the size (X & Y) of the grid, so a grid size of 64, results in a grid with 64^2 cells.
+* Hash Iterations - Each time `H` is called, it is looped the specified number of times.
+* HMAC Iterations - Each time `HMAC` is called, it is looped the specified number of times.
+* Extra Bytes - An array of `grid_size` elements, one element is appended (which element is based on column in the grid), prior to the salt, before the hash or HMAC operation.
+
 #### Current Status
 Rough. Incomplete. Requires code changes just to change the password it's hashing.
 
