@@ -9,26 +9,40 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"time"
+	"math/rand"
 )
 
 var grid [][][]byte
+var extra_data[][]byte
 
 func main() {
+	//create main hash
 	start := time.Now()
-	hash := gridhash("test", 64, 1000, 1000, []byte("testtest"))
+	hash := gridhash("test", 32, 1000, 100, []byte("testtest"), 100000)
 	elapsed := time.Since(start)
 
 	fmt.Println("Final: ", hex.EncodeToString(hash))
-	fmt.Printf("Hash took %s", elapsed)
+	fmt.Printf("Hash took %s\n", elapsed)
 }
 
-func gridhash(password string, grid_size int, hmac_iter int, hash_iter int, salt []byte) []byte {
+func gridhash(password string, grid_size int, hmac_iter int, hash_iter int, salt []byte, extra_bytes int) []byte {
 	//setup grid to hold hashes
 	grid = make([][][]byte, grid_size)
 	for i := range grid {
 		grid[i] = make([][]byte, grid_size)
 	}
 
+	//create extra data
+	start := time.Now()
+	extra_data = make([][]byte, grid_size)
+	for i := 0; i < grid_size; i++ {
+		//todo: better seed
+		extra_data[i] = rand_bytes(extra_bytes, int64(i))
+	}
+	elapsed := time.Since(start)
+	fmt.Printf("Extra data generation took %s\n", elapsed)
+
+	//time to crunch...
 	for i := 0; i < grid_size; i++ {
 		round(i, password, hmac_iter, hash_iter, salt)
 	}
@@ -37,7 +51,7 @@ func gridhash(password string, grid_size int, hmac_iter int, hash_iter int, salt
 }
 
 func round(index int, password string, hmac_iter int, hash_iter int, salt []byte) {
-	//fmt.Println("Index: ", index)
+	fmt.Println("Index: ", index)
 	if (index == 0) {
     //special case to bootstrap the process for later
 
@@ -75,6 +89,9 @@ func process_cell(row int, column int, hmac_iter int, hash_iter int, salt []byte
 			value = append(value, grid[row][idx]...)
 		}
 
+		//add the extra data
+		value = append(value, extra_data[column]...)
+
 		//is this a key cell?
 		if (row == column) {
 			ret = kdf(value, salt, password, hmac_iter)
@@ -83,7 +100,7 @@ func process_cell(row int, column int, hmac_iter int, hash_iter int, salt []byte
 		}
 
 		grid[row][column] = ret
-		//fmt.Println("Cell: ", row, column, hex.EncodeToString(grid[row][column]))
+		fmt.Println("Cell: ", row, column, hex.EncodeToString(grid[row][column]))
 	}
 }
 
@@ -105,4 +122,17 @@ func hash(value []byte, iterations int) []byte {
 	}
 
 	return value
+}
+
+func rand_bytes(length int, seed int64) []byte {
+	//todo: this is slow, and Go doesn't make it easy
+	r := rand.New(rand.NewSource(seed))
+
+	var list []byte
+	for i := 0; i < length; i++ {
+		buff := byte(r.Intn(255))
+		list = append(list, buff)
+	}
+
+	return list
 }
