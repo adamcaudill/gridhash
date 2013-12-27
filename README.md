@@ -48,6 +48,9 @@ There are several ways that this can be tuned for a specific environment:
 * HMAC Iterations - Each time `HMAC` is called, it is looped the specified number of times.
 * Extra Bytes - An array of `grid_size` elements, one element is appended (which element is based on column in the grid), prior to the salt, before the hash or HMAC operation.
 
+#### What primitives are used?
+Any combination of hash and HMAC functions may be used, the code here currently uses SHA-256 and SHA-256-HMAC, though future versions will allow selection of certain primitives from the command line.
+
 #### Current Status
 Rough. Incomplete. Requires code changes just to change the password it's hashing.
 
