@@ -18,14 +18,16 @@ var extra_data[][]byte
 func main() {
 	//create main hash
 	start := time.Now()
-	hash := gridhash("test", 32, 1000, 100, []byte("testtest"), 100000)
+	initial_hash := initial_pwd_hash("test")
+	hash := gridhash(initial_hash, 48, 1000, 100, []byte("testtest"), 10000)
 	elapsed := time.Since(start)
 
+	fmt.Println("Initial: ", hex.EncodeToString(initial_hash))
 	fmt.Println("Final: ", hex.EncodeToString(hash))
 	fmt.Printf("Hash took %s\n", elapsed)
 }
 
-func gridhash(password string, grid_size int, hmac_iter int, hash_iter int, salt []byte, extra_bytes int) []byte {
+func gridhash(password []byte, grid_size int, hmac_iter int, hash_iter int, salt []byte, extra_bytes int) []byte {
 	//setup grid to hold hashes
 	grid = make([][][]byte, grid_size)
 	for i := range grid {
@@ -50,13 +52,13 @@ func gridhash(password string, grid_size int, hmac_iter int, hash_iter int, salt
 	return grid[grid_size-1][grid_size-1]
 }
 
-func round(index int, password string, hmac_iter int, hash_iter int, salt []byte) {
-	fmt.Println("Index: ", index)
+func round(index int, password []byte, hmac_iter int, hash_iter int, salt []byte) {
+	//fmt.Println("Index: ", index)
 	if (index == 0) {
     //special case to bootstrap the process for later
 
 		//set 0:0
-		grid[index][index] = kdf([]byte(password), salt, password, hmac_iter)
+		grid[index][index] = kdf(password, salt, password, hmac_iter)
 
 		//set 0:1
 		grid[index][index+1] = hash(append(grid[index][index], salt...), hash_iter)
@@ -73,7 +75,7 @@ func round(index int, password string, hmac_iter int, hash_iter int, salt []byte
 	}
 }
 
-func process_cell(row int, column int, hmac_iter int, hash_iter int, salt []byte, password string) {
+func process_cell(row int, column int, hmac_iter int, hash_iter int, salt []byte, password []byte) {
   //make sure this isn't a cell that we bootstrapped
 	if (grid[row][column] == nil) {
 		var value []byte
@@ -100,13 +102,20 @@ func process_cell(row int, column int, hmac_iter int, hash_iter int, salt []byte
 		}
 
 		grid[row][column] = ret
-		fmt.Println("Cell: ", row, column, hex.EncodeToString(grid[row][column]))
+		//fmt.Println("Cell: ", row, column, hex.EncodeToString(grid[row][column]))
 	}
 }
 
-func kdf(value []byte, salt []byte, password string, iterations int) []byte {
+func initial_pwd_hash(password string) []byte {
+	pwd := []byte(password)
+	mac := hmac.New(sha256.New, hash_sum(pwd))
+	mac.Write(pwd)
+	return mac.Sum(nil)
+}
+
+func kdf(value []byte, salt []byte, password []byte, iterations int) []byte {
   for i := 0; i < iterations; i++ {
-		mac := hmac.New(sha256.New, []byte(password))
+		mac := hmac.New(sha256.New, password)
 		mac.Write(append(value, salt...))
 		value = mac.Sum(nil)
 	}
@@ -116,12 +125,16 @@ func kdf(value []byte, salt []byte, password string, iterations int) []byte {
 
 func hash(value []byte, iterations int) []byte {
 	for i := 0; i < iterations; i++ {
-		h := sha256.Sum256(value)
-		s := string(h[:])
-		value = []byte(s)
+		value = hash_sum(value)
 	}
 
 	return value
+}
+
+func hash_sum(data []byte) []byte {
+	h := sha256.Sum256(data)
+	s := string(h[:])
+	return []byte(s)
 }
 
 func rand_bytes(length int, seed int64) []byte {
