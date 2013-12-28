@@ -33,7 +33,7 @@ To calculate a cells value, values are appended from the bottom up, then right t
 For example, on cell `4:4`, the value is calculated as:
 
 ```
-HMAC(3:4 || 2:4 || 1:4 || 0:4 || 4:3 || 4:2 || 4:1 || 4:0 || extra_data || salt)
+HMAC(3:4 + 2:4 + 1:4 + 0:4 + 4:3 + 4:2 + 4:1 + 4:0 + extra_data + salt)
 ```
 
 Here, `extra_data` is a block of data deterministically generated from a seeded PRNG, this size of the blocks are configurable (as is most things), so it can be tuned to the specific environment.
