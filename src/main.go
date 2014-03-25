@@ -13,6 +13,7 @@ import (
 	"encoding/binary"
 	"bytes"
 	"code.google.com/p/go.crypto/pbkdf2"
+	"github.com/dchest/blake2s"
 )
 
 var grid [][][]byte
@@ -26,7 +27,7 @@ func main() {
 	initial_hash := initial_pwd_hash("test")
 	salt := hash([]byte("testtest"), 1)
 
-	hash := gridhash(initial_hash, 32, 10000, 1, salt, 100000)
+	hash := gridhash(initial_hash, 32, 1000, 100, salt, 1000000)
 	elapsed := time.Since(start)
 
 	fmt.Println("Initial: ", hex.EncodeToString(initial_hash))
@@ -129,6 +130,7 @@ func initial_pwd_hash(password string) []byte {
 }
 
 func kdf(value []byte, salt []byte, iterations int) []byte {
+	value = hash(value, 1)
 	return pbkdf2.Key(value, salt, iterations, sha256.Size, sha256.New)
 }
 
@@ -136,22 +138,32 @@ func hash(value []byte, iterations int) []byte {
 	var buff [32]byte
 
 	for i := 0; i < iterations; i++ {
-		buff = sha256.Sum256(value)
+		buff = blake2s.Sum256(value)
 		value = buff[:]
 	}
 
 	return value
 }
 
+//func hash(value []byte, iterations int) []byte {
+//	var buff [32]byte
+//
+//	for i := 0; i < iterations; i++ {
+//		buff = sha256.Sum256(value)
+//		value = buff[:]
+//	}
+//
+//	return value
+//}
+
 func rand_bytes(length int, seed int64) []byte {
 	//todo: this is slow, and Go doesn't make it easy
 	r := rand.New(rand.NewSource(seed))
+	ret := make([]byte, length)
 
-	var list []byte
 	for i := 0; i < length; i++ {
-		buff := byte(r.Intn(255))
-		list = append(list, buff)
+		ret[i] = byte(r.Intn(255))
 	}
 
-	return list
+	return ret
 }
