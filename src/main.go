@@ -10,6 +10,8 @@ import (
 	"encoding/hex"
 	"time"
 	"math/rand"
+	"encoding/binary"
+	"bytes"
 )
 
 var grid [][][]byte
@@ -18,8 +20,12 @@ var extra_data[][]byte
 func main() {
 	//create main hash
 	start := time.Now()
+
+	//hash the password & salt
 	initial_hash := initial_pwd_hash("test")
-	hash := gridhash(initial_hash, 48, 1000, 100, []byte("testtest"), 10000)
+	salt := hash([]byte("testtest"), 1)
+
+	hash := gridhash(initial_hash, 48, 1000, 1000, salt, 10000)
 	elapsed := time.Since(start)
 
 	fmt.Println("Initial: ", hex.EncodeToString(initial_hash))
@@ -38,8 +44,16 @@ func gridhash(password []byte, grid_size int, hmac_iter int, hash_iter int, salt
 	start := time.Now()
 	extra_data = make([][]byte, grid_size)
 	for i := 0; i < grid_size; i++ {
-		//todo: better seed
-		extra_data[i] = rand_bytes(extra_bytes, int64(i))
+		//seed with counter & password
+		counter := make([]byte, 4)
+		binary.LittleEndian.PutUint32(counter, uint32(i))
+
+		var seed int64
+		seedBase := hash(append(counter, password...), 1)[0:8]
+		buf := bytes.NewBuffer(seedBase)
+		binary.Read(buf, binary.LittleEndian, &seed)
+
+		extra_data[i] = rand_bytes(extra_bytes, seed)
 	}
 	elapsed := time.Since(start)
 	fmt.Printf("Extra data generation took %s\n", elapsed)
@@ -108,7 +122,7 @@ func process_cell(row int, column int, hmac_iter int, hash_iter int, salt []byte
 
 func initial_pwd_hash(password string) []byte {
 	pwd := []byte(password)
-	mac := hmac.New(sha256.New, hash_sum(pwd))
+	mac := hmac.New(sha256.New, hash(pwd, 1))
 	mac.Write(pwd)
 	return mac.Sum(nil)
 }
@@ -124,17 +138,14 @@ func kdf(value []byte, salt []byte, password []byte, iterations int) []byte {
 }
 
 func hash(value []byte, iterations int) []byte {
+	var buff [32]byte
+
 	for i := 0; i < iterations; i++ {
-		value = hash_sum(value)
+		buff = sha256.Sum256(value)
+		value = buff[:]
 	}
 
 	return value
-}
-
-func hash_sum(data []byte) []byte {
-	h := sha256.Sum256(data)
-	s := string(h[:])
-	return []byte(s)
 }
 
 func rand_bytes(length int, seed int64) []byte {
