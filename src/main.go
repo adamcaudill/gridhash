@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"encoding/binary"
 	"bytes"
+	"code.google.com/p/go.crypto/pbkdf2"
 )
 
 var grid [][][]byte
@@ -25,7 +26,7 @@ func main() {
 	initial_hash := initial_pwd_hash("test")
 	salt := hash([]byte("testtest"), 1)
 
-	hash := gridhash(initial_hash, 48, 1000, 1000, salt, 10000)
+	hash := gridhash(initial_hash, 32, 10000, 1, salt, 100000)
 	elapsed := time.Since(start)
 
 	fmt.Println("Initial: ", hex.EncodeToString(initial_hash))
@@ -72,7 +73,7 @@ func round(index int, password []byte, hmac_iter int, hash_iter int, salt []byte
     //special case to bootstrap the process for later
 
 		//set 0:0
-		grid[index][index] = kdf(password, salt, password, hmac_iter)
+		grid[index][index] = kdf(password, salt, hmac_iter)
 
 		//set 0:1
 		grid[index][index+1] = hash(append(grid[index][index], salt...), hash_iter)
@@ -110,7 +111,7 @@ func process_cell(row int, column int, hmac_iter int, hash_iter int, salt []byte
 
 		//is this a key cell?
 		if (row == column) {
-			ret = kdf(value, salt, password, hmac_iter)
+			ret = kdf(value, salt, hmac_iter)
 		} else {
 			ret = hash(append(value, salt...), hash_iter)
 		}
@@ -127,14 +128,8 @@ func initial_pwd_hash(password string) []byte {
 	return mac.Sum(nil)
 }
 
-func kdf(value []byte, salt []byte, password []byte, iterations int) []byte {
-  for i := 0; i < iterations; i++ {
-		mac := hmac.New(sha256.New, password)
-		mac.Write(append(value, salt...))
-		value = mac.Sum(nil)
-	}
-
-	return value
+func kdf(value []byte, salt []byte, iterations int) []byte {
+	return pbkdf2.Key(value, salt, iterations, sha256.Size, sha256.New)
 }
 
 func hash(value []byte, iterations int) []byte {
