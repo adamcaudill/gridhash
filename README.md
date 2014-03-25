@@ -16,15 +16,15 @@ GridHash creates a grid of hashes, that are generated based on prior hashes. Thi
 +---+------+------+------+------+------+
 | X |  0   |  1   |  2   |  3   |  4   |
 +---+------+------+------+------+------+
-| 0 | HMAC | H    | H    | H    | H    |
-| 1 | H    | HMAC | H    | H    | H    |
-| 2 | H    | H    | HMAC | H    | H    |
-| 3 | H    | H    | H    | HMAC | H    |
-| 4 | H    | H    | H    | H    | HMAC |
+| 0 | KDF  | H    | H    | H    | H    |
+| 1 | H    | KDF  | H    | H    | H    |
+| 2 | H    | H    | KDF  | H    | H    |
+| 3 | H    | H    | H    | KDF  | H    |
+| 4 | H    | H    | H    | H    | KDF  |
 +---+------+------+------+------+------+
 ```
 
-Where `H` is a hash function, and `HMAC` is, big surprise, an `HMAC` function.
+Where `H` is a hash function, and `KDF` is, big surprise, an `KDF` function.
 
 To get the process started, cells `0:0` and `0:1` are pre-populated, then the others are filled in, by row, from top down, then left to right. When `X == Y` the `HMAC` is used, instead on the hash function used elsewhere.
 
@@ -33,7 +33,7 @@ To calculate a cells value, values are appended from the bottom up, then right t
 For example, on cell `4:4`, the value is calculated as:
 
 ```
-HMAC(3:4 + 2:4 + 1:4 + 0:4 + 4:3 + 4:2 + 4:1 + 4:0 + extra_data + salt)
+KDF(3:4 + 2:4 + 1:4 + 0:4 + 4:3 + 4:2 + 4:1 + 4:0 + extra_data + salt)
 ```
 
 Here, `extra_data` is a block of data deterministically generated from a seeded PRNG, this size of the blocks are configurable (as is most things), so it can be tuned to the specific environment.
